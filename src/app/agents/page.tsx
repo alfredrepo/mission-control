@@ -3,13 +3,15 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Users, RefreshCw } from 'lucide-react';
 import { AppNavSidebar } from '@/components/AppNavSidebar';
-import type { Agent } from '@/lib/types';
+import { AgentModal } from '@/components/AgentModal';
+import type { Agent, AgentStatus } from '@/lib/types';
 
 export default function AgentsPage() {
   const [agents, setAgents] = useState<Agent[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
 
   const load = async () => {
     try {
@@ -29,6 +31,15 @@ export default function AgentsPage() {
     if (statusFilter === 'all') return agents;
     return agents.filter((a) => a.status === statusFilter);
   }, [agents, statusFilter]);
+
+  const getStatusBadge = (status: AgentStatus) => {
+    const styles = {
+      standby: 'status-standby',
+      working: 'status-working',
+      offline: 'status-offline',
+    };
+    return styles[status] || styles.standby;
+  };
 
   return (
     <div className="min-h-screen bg-mc-bg">
@@ -65,14 +76,38 @@ export default function AgentsPage() {
         <main className="flex-1 p-6 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
           {loading && <p className="text-mc-text-secondary">Loading agents...</p>}
           {!loading && filteredAgents.map((a) => (
-            <div key={a.id} className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
-              <div className="text-lg mb-1">{a.avatar_emoji} {a.name}</div>
-              <div className="text-sm text-mc-text-secondary">{a.role}</div>
-              <div className="mt-2 text-xs uppercase text-mc-text-secondary">{a.status}</div>
-            </div>
+            <button
+              key={a.id}
+              onClick={() => setEditingAgent(a)}
+              className="text-left bg-mc-bg-secondary border border-mc-border rounded-lg p-4 hover:border-mc-accent/40 hover:bg-mc-bg-tertiary transition-colors"
+            >
+              <div className="flex items-start justify-between gap-3">
+                <div>
+                  <div className="text-lg mb-1">{a.avatar_emoji} {a.name} {a.is_master ? '★' : ''}</div>
+                  <div className="text-sm text-mc-text-secondary">{a.role}</div>
+                  {a.description && (
+                    <div className="text-xs text-mc-text-secondary mt-1 line-clamp-2">{a.description}</div>
+                  )}
+                </div>
+                <span className={`text-xs px-2 py-0.5 rounded uppercase ${getStatusBadge(a.status)}`}>
+                  {a.status}
+                </span>
+              </div>
+            </button>
           ))}
+          {!loading && filteredAgents.length === 0 && (
+            <p className="text-mc-text-secondary">No agents for this filter.</p>
+          )}
         </main>
       </div>
+
+      {editingAgent && (
+        <AgentModal
+          agent={editingAgent}
+          onClose={() => setEditingAgent(null)}
+          workspaceId="default"
+        />
+      )}
     </div>
   );
 }
