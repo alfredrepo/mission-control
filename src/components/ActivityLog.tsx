@@ -6,6 +6,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import { Send } from 'lucide-react';
 import type { TaskActivity } from '@/lib/types';
 
 interface ActivityLogProps {
@@ -15,6 +16,8 @@ interface ActivityLogProps {
 export function ActivityLog({ taskId }: ActivityLogProps) {
   const [activities, setActivities] = useState<TaskActivity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [comment, setComment] = useState('');
+  const [sending, setSending] = useState(false);
 
   useEffect(() => {
     loadActivities();
@@ -82,6 +85,27 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
     });
   };
 
+  const sendComment = async () => {
+    const msg = comment.trim();
+    if (!msg) return;
+    setSending(true);
+    try {
+      const res = await fetch(`/api/tasks/${taskId}/activities`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ activity_type: 'comment', message: msg }),
+      });
+      if (res.ok) {
+        setComment('');
+        await loadActivities();
+      }
+    } catch (error) {
+      console.error('Failed to send comment:', error);
+    } finally {
+      setSending(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-8">
@@ -101,6 +125,32 @@ export function ActivityLog({ taskId }: ActivityLogProps) {
 
   return (
     <div className="space-y-3">
+      <div className="bg-mc-bg border border-mc-border rounded-lg p-3">
+        <div className="text-xs text-mc-text-secondary mb-2">Task thread (use @AgentName to mention)</div>
+        <div className="flex gap-2">
+          <input
+            value={comment}
+            onChange={(e) => setComment(e.target.value)}
+            onKeyDown={(e) => {
+              if (e.key === 'Enter' && !e.shiftKey) {
+                e.preventDefault();
+                sendComment();
+              }
+            }}
+            placeholder="Write a comment..."
+            className="flex-1 bg-mc-bg-secondary border border-mc-border rounded px-3 py-2 text-sm focus:outline-none focus:border-mc-accent"
+          />
+          <button
+            onClick={sendComment}
+            disabled={sending || !comment.trim()}
+            className="px-3 py-2 bg-mc-accent text-mc-bg rounded disabled:opacity-50 flex items-center gap-1"
+          >
+            <Send className="w-4 h-4" />
+            Send
+          </button>
+        </div>
+      </div>
+
       {activities.map((activity) => (
         <div
           key={activity.id}

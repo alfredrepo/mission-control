@@ -176,6 +176,17 @@ CREATE TABLE IF NOT EXISTS agent_memories (
   updated_at TEXT DEFAULT (datetime('now'))
 );
 
+-- Agent mentions/inbox (for task-thread communication)
+CREATE TABLE IF NOT EXISTS agent_mentions (
+  id TEXT PRIMARY KEY,
+  task_id TEXT NOT NULL REFERENCES tasks(id) ON DELETE CASCADE,
+  from_agent_id TEXT REFERENCES agents(id),
+  to_agent_id TEXT NOT NULL REFERENCES agents(id) ON DELETE CASCADE,
+  message TEXT NOT NULL,
+  created_at TEXT DEFAULT (datetime('now')),
+  read_at TEXT
+);
+
 -- Indexes for performance
 CREATE INDEX IF NOT EXISTS idx_tasks_status ON tasks(status);
 CREATE INDEX IF NOT EXISTS idx_tasks_assigned ON tasks(assigned_agent_id);
@@ -188,4 +199,5 @@ CREATE INDEX IF NOT EXISTS idx_activities_task ON task_activities(task_id, creat
 CREATE INDEX IF NOT EXISTS idx_deliverables_task ON task_deliverables(task_id);
 CREATE INDEX IF NOT EXISTS idx_openclaw_sessions_task ON openclaw_sessions(task_id);
 CREATE INDEX IF NOT EXISTS idx_planning_questions_task ON planning_questions(task_id, sort_order);
+CREATE INDEX IF NOT EXISTS idx_agent_mentions_to_read ON agent_mentions(to_agent_id, read_at, created_at DESC);
 `;

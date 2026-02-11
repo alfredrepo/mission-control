@@ -90,6 +90,47 @@ export async function POST(
     const db = getDb();
     const id = crypto.randomUUID();
 
+    // Agent mentions in comments: @AgentName
+    let resolvedMetadata = metadata ? { ...metadata } : {};
+    if (activity_type === 'comment' && typeof message === 'string') {
+      const mentionMatches = [...message.matchAll(/@([a-zA-Z0-9_-]+)/g)].map(m => m[1]);
+      if (mentionMatches.length > 0) {
+        const agents = db.prepare('SELECT id, name FROM agents').all() as { id: string; name: string }[];
+        const normalized = (s: string) => s.toLowerCase().replace(/[^a-z0-9]/g, '');
+        const targets = new Map<string, string>();
+
+        for (const token of mentionMatches) {
+          const tokenNorm = normalized(token);
+          const matched = agents.find(a => normalized(a.name) === tokenNorm || normalized(a.name).includes(tokenNorm));
+          if (matched) targets.set(matched.id, matched.name);
+        }
+
+        if (targets.size > 0) {
+          resolvedMetadata = {
+            ...resolvedMetadata,
+            mentions: Array.from(targets.entries()).map(([id, name]) => ({ id, name })),
+          };
+
+          const mentionStmt = db.prepare(`
+            INSERT INTO agent_mentions (id, task_id, from_agent_id, to_agent_id, message, created_at)
+            VALUES (?, ?, ?, ?, ?, ?)
+          `);
+
+          const nowIso = new Date().toISOString();
+          for (const [toAgentId] of targets.entries()) {
+            mentionStmt.run(
+              crypto.randomUUID(),
+              taskId,
+              agent_id || null,
+              toAgentId,
+              message,
+              nowIso,
+            );
+          }
+        }
+      }
+    }
+
     // Insert activity
     db.prepare(`
       INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, metadata)
@@ -100,7 +141,7 @@ export async function POST(
       agent_id || null,
       activity_type,
       message,
-      metadata ? JSON.stringify(metadata) : null
+      resolvedMetadata ? JSON.stringify(resolvedMetadata) : null
     );
 
     // Get the created activity with agent info

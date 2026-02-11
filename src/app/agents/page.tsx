@@ -12,11 +12,31 @@ export default function AgentsPage() {
   const [statusFilter, setStatusFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
+  const [mentionCounts, setMentionCounts] = useState<Record<string, number>>({});
 
   const load = async () => {
     try {
       const res = await fetch('/api/agents?workspace_id=default');
-      if (res.ok) setAgents(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setAgents(data);
+
+        const counts: Record<string, number> = {};
+        await Promise.all(
+          data.map(async (a: Agent) => {
+            try {
+              const mr = await fetch(`/api/agents/${a.id}/mentions?unread=true`);
+              if (mr.ok) {
+                const mentions = await mr.json();
+                counts[a.id] = Array.isArray(mentions) ? mentions.length : 0;
+              }
+            } catch {
+              counts[a.id] = 0;
+            }
+          })
+        );
+        setMentionCounts(counts);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -78,7 +98,17 @@ export default function AgentsPage() {
           {!loading && filteredAgents.map((a) => (
             <button
               key={a.id}
-              onClick={() => setEditingAgent(a)}
+              onClick={async () => {
+                setEditingAgent(a);
+                if ((mentionCounts[a.id] || 0) > 0) {
+                  await fetch(`/api/agents/${a.id}/mentions`, {
+                    method: 'PATCH',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ markAll: true }),
+                  });
+                  setMentionCounts((prev) => ({ ...prev, [a.id]: 0 }));
+                }
+              }}
               className="text-left bg-mc-bg-secondary border border-mc-border rounded-lg p-4 hover:border-mc-accent/40 hover:bg-mc-bg-tertiary transition-colors"
             >
               <div className="flex items-start justify-between gap-3">
@@ -89,9 +119,16 @@ export default function AgentsPage() {
                     <div className="text-xs text-mc-text-secondary mt-1 line-clamp-2">{a.description}</div>
                   )}
                 </div>
-                <span className={`text-xs px-2 py-0.5 rounded uppercase ${getStatusBadge(a.status)}`}>
-                  {a.status}
-                </span>
+                <div className="flex flex-col items-end gap-1">
+                  <span className={`text-xs px-2 py-0.5 rounded uppercase ${getStatusBadge(a.status)}`}>
+                    {a.status}
+                  </span>
+                  {(mentionCounts[a.id] || 0) > 0 && (
+                    <span className="text-[10px] px-2 py-0.5 rounded bg-mc-accent/20 text-mc-accent">
+                      @{mentionCounts[a.id]} unread
+                    </span>
+                  )}
+                </div>
               </div>
             </button>
           ))}
