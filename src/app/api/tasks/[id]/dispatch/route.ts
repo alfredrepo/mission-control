@@ -19,6 +19,8 @@ interface RouteParams {
 export async function POST(request: NextRequest, { params }: RouteParams) {
   try {
     const { id } = await params;
+    const { searchParams } = new URL(request.url);
+    const forceDispatch = searchParams.get('force') === 'true';
 
     // Get task with agent info
     const task = queryOne<Task & { assigned_agent_name?: string }>(
@@ -48,6 +50,23 @@ export async function POST(request: NextRequest, { params }: RouteParams) {
 
     if (!agent) {
       return NextResponse.json({ error: 'Assigned agent not found' }, { status: 404 });
+    }
+
+    // Idempotency guard: don't re-dispatch tasks already in progress to same agent
+    if (
+      !forceDispatch &&
+      task.status === 'in_progress' &&
+      task.dispatched_at &&
+      task.last_dispatched_agent_id === agent.id
+    ) {
+      return NextResponse.json({
+        success: true,
+        skipped: true,
+        reason: 'Task already dispatched and currently in progress for this agent',
+        task_id: task.id,
+        agent_id: agent.id,
+        dispatched_at: task.dispatched_at,
+      });
     }
 
     // Connect to OpenClaw Gateway
@@ -146,16 +165,24 @@ If you need help or clarification, ask me (Charlie).`;
       // Use sessionKey for routing to the agent's session
       // Format: agent:main:{openclaw_session_id}
       const sessionKey = `agent:main:${session.openclaw_session_id}`;
+      const dispatchKey = `dispatch-${task.id}-${agent.id}-${task.updated_at}`;
       await client.call('chat.send', {
         sessionKey,
         message: taskMessage,
-        idempotencyKey: `dispatch-${task.id}-${Date.now()}`
+        idempotencyKey: dispatchKey
       });
 
-      // Update task status to in_progress
+      // Update task status + dispatch audit fields
       run(
-        'UPDATE tasks SET status = ?, updated_at = ? WHERE id = ?',
-        ['in_progress', now, id]
+        `UPDATE tasks
+         SET status = ?,
+             dispatched_at = ?,
+             dispatch_count = COALESCE(dispatch_count, 0) + 1,
+             last_dispatch_key = ?,
+             last_dispatched_agent_id = ?,
+             updated_at = ?
+         WHERE id = ?`,
+        ['in_progress', now, dispatchKey, agent.id, now, id]
       );
 
       // Broadcast task update
@@ -184,6 +211,26 @@ If you need help or clarification, ask me (Charlie).`;
           task.id,
           `Task "${task.title}" dispatched to ${agent.name}`,
           now
+        ]
+      );
+
+      // Add structured task activity for audit trail
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          uuidv4(),
+          task.id,
+          agent.id,
+          'status_changed',
+          `Dispatched to ${agent.name}`,
+          JSON.stringify({
+            action: 'dispatch',
+            dispatchKey,
+            sessionKey,
+            forced: forceDispatch,
+          }),
+          now,
         ]
       );
 

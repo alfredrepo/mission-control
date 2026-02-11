@@ -47,6 +47,10 @@ export interface Task {
   workspace_id: string;
   business_id: string;
   due_date?: string;
+  dispatched_at?: string;
+  dispatch_count?: number;
+  last_dispatch_key?: string;
+  last_dispatched_agent_id?: string;
   created_at: string;
   updated_at: string;
   // Joined fields

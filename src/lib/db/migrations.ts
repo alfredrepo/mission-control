@@ -151,6 +151,35 @@ const migrations: Migration[] = [
         console.log('[Migration 004] Added planning_agents');
       }
     }
+  },
+  {
+    id: '005',
+    name: 'add_dispatch_audit_columns',
+    up: (db) => {
+      console.log('[Migration 005] Adding dispatch audit columns to tasks...');
+
+      const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+
+      if (!tasksInfo.some(col => col.name === 'dispatched_at')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN dispatched_at TEXT`);
+        console.log('[Migration 005] Added dispatched_at');
+      }
+
+      if (!tasksInfo.some(col => col.name === 'dispatch_count')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN dispatch_count INTEGER DEFAULT 0`);
+        console.log('[Migration 005] Added dispatch_count');
+      }
+
+      if (!tasksInfo.some(col => col.name === 'last_dispatch_key')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN last_dispatch_key TEXT`);
+        console.log('[Migration 005] Added last_dispatch_key');
+      }
+
+      if (!tasksInfo.some(col => col.name === 'last_dispatched_agent_id')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN last_dispatched_agent_id TEXT REFERENCES agents(id)`);
+        console.log('[Migration 005] Added last_dispatched_agent_id');
+      }
+    }
   }
 ];
 

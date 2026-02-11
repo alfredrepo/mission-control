@@ -50,6 +50,10 @@ CREATE TABLE IF NOT EXISTS tasks (
   workspace_id TEXT DEFAULT 'default' REFERENCES workspaces(id),
   business_id TEXT DEFAULT 'default',
   due_date TEXT,
+  dispatched_at TEXT,
+  dispatch_count INTEGER DEFAULT 0,
+  last_dispatch_key TEXT,
+  last_dispatched_agent_id TEXT REFERENCES agents(id),
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );

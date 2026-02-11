@@ -105,6 +105,21 @@ export async function PATCH(
          VALUES (?, ?, ?, ?, ?)`,
         [uuidv4(), eventType, id, `Task "${existing.title}" moved to ${body.status}`, now]
       );
+
+      // Structured task activity for orchestration/audit
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          uuidv4(),
+          id,
+          body.updated_by_agent_id || null,
+          'status_changed',
+          `Status changed: ${existing.status} → ${body.status}`,
+          JSON.stringify({ from: existing.status, to: body.status }),
+          now,
+        ]
+      );
     }
 
     // Handle assignment change
@@ -119,6 +134,23 @@ export async function PATCH(
             `INSERT INTO events (id, type, agent_id, task_id, message, created_at)
              VALUES (?, ?, ?, ?, ?, ?)`,
             [uuidv4(), 'task_assigned', body.assigned_agent_id, id, `"${existing.title}" assigned to ${agent.name}`, now]
+          );
+
+          run(
+            `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, metadata, created_at)
+             VALUES (?, ?, ?, ?, ?, ?, ?)`,
+            [
+              uuidv4(),
+              id,
+              body.updated_by_agent_id || null,
+              'updated',
+              `Assigned to ${agent.name}`,
+              JSON.stringify({
+                from: existing.assigned_agent_id || null,
+                to: body.assigned_agent_id,
+              }),
+              now,
+            ]
           );
 
           // Auto-dispatch if already in assigned status or being assigned now
