@@ -10,6 +10,10 @@ interface RouteParams {
   params: Promise<{ id: string }>;
 }
 
+function sleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
 /**
  * POST /api/tasks/[id]/dispatch
  * 
@@ -166,11 +170,32 @@ If you need help or clarification, ask me (Charlie).`;
       // Format: agent:main:{openclaw_session_id}
       const sessionKey = `agent:main:${session.openclaw_session_id}`;
       const dispatchKey = `dispatch-${task.id}-${agent.id}-${task.updated_at}`;
-      await client.call('chat.send', {
-        sessionKey,
-        message: taskMessage,
-        idempotencyKey: dispatchKey
-      });
+      const maxAttempts = 3;
+      let lastError: unknown;
+
+      for (let attempt = 1; attempt <= maxAttempts; attempt++) {
+        try {
+          await client.call('chat.send', {
+            sessionKey,
+            message: taskMessage,
+            idempotencyKey: dispatchKey,
+          });
+          lastError = null;
+          break;
+        } catch (err) {
+          lastError = err;
+          if (attempt < maxAttempts) {
+            const backoffMs = attempt * 1000; // 1s, 2s
+            console.warn(`Dispatch attempt ${attempt} failed for task ${task.id}; retrying in ${backoffMs}ms`);
+            await sleep(backoffMs);
+            continue;
+          }
+        }
+      }
+
+      if (lastError) {
+        throw lastError;
+      }
 
       // Update task status + dispatch audit fields
       run(
@@ -243,6 +268,24 @@ If you need help or clarification, ask me (Charlie).`;
       });
     } catch (err) {
       console.error('Failed to send message to agent:', err);
+
+      run(
+        `INSERT INTO task_activities (id, task_id, agent_id, activity_type, message, metadata, created_at)
+         VALUES (?, ?, ?, ?, ?, ?, ?)`,
+        [
+          uuidv4(),
+          task.id,
+          agent.id,
+          'status_changed',
+          `Dispatch failed for ${agent.name}`,
+          JSON.stringify({
+            action: 'dispatch_failed',
+            error: err instanceof Error ? err.message : String(err),
+          }),
+          new Date().toISOString(),
+        ]
+      );
+
       return NextResponse.json(
         { error: `Failed to send task to agent: ${err instanceof Error ? err.message : 'Unknown error'}` },
         { status: 500 }

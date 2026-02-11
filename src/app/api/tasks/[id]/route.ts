@@ -51,20 +51,38 @@ export async function PATCH(
     const values: unknown[] = [];
     const now = new Date().toISOString();
 
-    // Workflow enforcement for agent-initiated approvals
-    // If an agent is trying to move review→done, they must be a master agent
-    // User-initiated moves (no agent ID) are allowed
-    if (body.status === 'done' && existing.status === 'review' && body.updated_by_agent_id) {
-      const updatingAgent = queryOne<Agent>(
-        'SELECT is_master FROM agents WHERE id = ?',
-        [body.updated_by_agent_id]
+    // Workflow enforcement for review -> done transitions
+    if (body.status === 'done' && existing.status === 'review') {
+      // Quality gate: require at least one deliverable before completion
+      const deliverableCount = queryOne<{ count: number }>(
+        'SELECT COUNT(*) as count FROM task_deliverables WHERE task_id = ?',
+        [id]
       );
 
-      if (!updatingAgent || !updatingAgent.is_master) {
+      if (!deliverableCount || deliverableCount.count < 1) {
         return NextResponse.json(
-          { error: 'Forbidden: only master agent (Charlie) can approve tasks' },
-          { status: 403 }
+          {
+            error: 'Cannot mark task as done: no deliverables found. Add at least one deliverable first.',
+            code: 'DELIVERABLE_REQUIRED',
+          },
+          { status: 400 }
         );
+      }
+
+      // If an agent is trying to move review→done, they must be a master agent
+      // User-initiated moves (no agent ID) are allowed
+      if (body.updated_by_agent_id) {
+        const updatingAgent = queryOne<Agent>(
+          'SELECT is_master FROM agents WHERE id = ?',
+          [body.updated_by_agent_id]
+        );
+
+        if (!updatingAgent || !updatingAgent.is_master) {
+          return NextResponse.json(
+            { error: 'Forbidden: only master agent (Charlie) can approve tasks' },
+            { status: 403 }
+          );
+        }
       }
     }
 
