@@ -25,6 +25,11 @@ const routingProfiles: RoutingProfile[] = [
     affinityHints: ['ops', 'engineer', 'developer', 'dev', 'backend', 'automation', 'executor'],
   },
   {
+    id: 'platform-builder',
+    keywords: ['platform', 'backend', 'architecture', 'api', 'database', 'scalable', 'microservice', 'service', 'infra', 'integration'],
+    affinityHints: ['platform', 'backend', 'architect', 'architecture', 'builder', 'design', 'product'],
+  },
+  {
     id: 'briefing',
     keywords: ['summary', 'brief', 'format', 'rewrite', 'polish', 'digest', 'telegram copy'],
     affinityHints: ['brief', 'editor', 'writer', 'copy', 'content', 'synthesizer'],
@@ -40,6 +45,13 @@ function scoreAgent(taskText: string, agent: Agent): RoutingDecision {
   const reasons: string[] = [];
 
   const agentText = `${agent.name} ${agent.role} ${agent.description || ''}`.toLowerCase();
+
+  const isPlatformTask = ['api', 'backend', 'platform'].some((k) => taskText.includes(k));
+  const isPlatformBuilderPro = agent.name.toLowerCase() === 'platform builder pro';
+  if (isPlatformTask && isPlatformBuilderPro) {
+    score += 20;
+    reasons.push('platform-default: prioritized for api/backend/platform tasks');
+  }
 
   for (const profile of routingProfiles) {
     const keywordHits = countHits(taskText, profile.keywords);
