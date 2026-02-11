@@ -54,6 +54,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   dispatch_count INTEGER DEFAULT 0,
   last_dispatch_key TEXT,
   last_dispatched_agent_id TEXT REFERENCES agents(id),
+  late_alerted_at TEXT,
+  late_alert_status TEXT,
   created_at TEXT DEFAULT (datetime('now')),
   updated_at TEXT DEFAULT (datetime('now'))
 );

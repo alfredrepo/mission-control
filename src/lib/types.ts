@@ -51,6 +51,8 @@ export interface Task {
   dispatch_count?: number;
   last_dispatch_key?: string;
   last_dispatched_agent_id?: string;
+  late_alerted_at?: string;
+  late_alert_status?: string;
   created_at: string;
   updated_at: string;
   // Joined fields

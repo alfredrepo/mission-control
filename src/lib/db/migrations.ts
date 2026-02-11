@@ -180,6 +180,25 @@ const migrations: Migration[] = [
         console.log('[Migration 005] Added last_dispatched_agent_id');
       }
     }
+  },
+  {
+    id: '006',
+    name: 'add_late_alert_dedup_columns',
+    up: (db) => {
+      console.log('[Migration 006] Adding late alert dedup columns to tasks...');
+
+      const tasksInfo = db.prepare("PRAGMA table_info(tasks)").all() as { name: string }[];
+
+      if (!tasksInfo.some(col => col.name === 'late_alerted_at')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN late_alerted_at TEXT`);
+        console.log('[Migration 006] Added late_alerted_at');
+      }
+
+      if (!tasksInfo.some(col => col.name === 'late_alert_status')) {
+        db.exec(`ALTER TABLE tasks ADD COLUMN late_alert_status TEXT`);
+        console.log('[Migration 006] Added late_alert_status');
+      }
+    }
   }
 ];
 
