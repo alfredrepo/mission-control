@@ -144,6 +144,19 @@ export async function PATCH(
           now,
         ]
       );
+
+      // Keep assigned agent working memory in sync with task status
+      if (existing.assigned_agent_id) {
+        const memoryLine = `Current task: ${existing.title} (${existing.id}) | Status: ${body.status} | Updated: ${now}`;
+        run(
+          `INSERT INTO agent_memories (agent_id, working_memory, long_term_memory, updated_at)
+           VALUES (?, ?, COALESCE((SELECT long_term_memory FROM agent_memories WHERE agent_id = ?), ''), ?)
+           ON CONFLICT(agent_id) DO UPDATE SET
+             working_memory = excluded.working_memory,
+             updated_at = excluded.updated_at`,
+          [existing.assigned_agent_id, memoryLine, existing.assigned_agent_id, now]
+        );
+      }
     }
 
     // Handle assignment change

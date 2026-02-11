@@ -171,6 +171,13 @@ export interface TaskDeliverable {
   created_at: string;
 }
 
+export interface AgentMemory {
+  agent_id: string;
+  working_memory?: string;
+  long_term_memory?: string;
+  updated_at: string;
+}
+
 // Planning types
 export type PlanningQuestionType = 'multiple_choice' | 'text' | 'yes_no';
 

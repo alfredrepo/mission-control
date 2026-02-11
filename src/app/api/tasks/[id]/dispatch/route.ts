@@ -259,6 +259,17 @@ If you need help or clarification, ask me (Charlie).`;
         ]
       );
 
+      // Update working memory for assigned agent
+      const memoryLine = `Current task: ${task.title} (${task.id}) | Status: in_progress | Next: produce deliverables and move to review`;
+      run(
+        `INSERT INTO agent_memories (agent_id, working_memory, long_term_memory, updated_at)
+         VALUES (?, ?, COALESCE((SELECT long_term_memory FROM agent_memories WHERE agent_id = ?), ''), ?)
+         ON CONFLICT(agent_id) DO UPDATE SET
+           working_memory = excluded.working_memory,
+           updated_at = excluded.updated_at`,
+        [agent.id, memoryLine, agent.id, now]
+      );
+
       return NextResponse.json({
         success: true,
         task_id: task.id,

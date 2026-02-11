@@ -199,6 +199,22 @@ const migrations: Migration[] = [
         console.log('[Migration 006] Added late_alert_status');
       }
     }
+  },
+  {
+    id: '007',
+    name: 'add_agent_memories_table',
+    up: (db) => {
+      console.log('[Migration 007] Adding agent_memories table...');
+
+      db.exec(`
+        CREATE TABLE IF NOT EXISTS agent_memories (
+          agent_id TEXT PRIMARY KEY REFERENCES agents(id) ON DELETE CASCADE,
+          working_memory TEXT,
+          long_term_memory TEXT,
+          updated_at TEXT DEFAULT (datetime('now'))
+        );
+      `);
+    }
   }
 ];
 
