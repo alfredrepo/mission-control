@@ -13,6 +13,7 @@ export default function AgentsPage() {
   const [refreshing, setRefreshing] = useState(false);
   const [editingAgent, setEditingAgent] = useState<Agent | null>(null);
   const [mentionCounts, setMentionCounts] = useState<Record<string, number>>({});
+  const [unreadOnly, setUnreadOnly] = useState(false);
 
   const load = async () => {
     try {
@@ -47,10 +48,22 @@ export default function AgentsPage() {
     load();
   }, []);
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const unreadOnlyParam = new URLSearchParams(window.location.search).get('unreadOnly') === '1';
+    if (unreadOnlyParam) {
+      setUnreadOnly(true);
+      setStatusFilter('all');
+    }
+  }, []);
+
   const filteredAgents = useMemo(() => {
-    if (statusFilter === 'all') return agents;
-    return agents.filter((a) => a.status === statusFilter);
-  }, [agents, statusFilter]);
+    let result = statusFilter === 'all' ? agents : agents.filter((a) => a.status === statusFilter);
+    if (unreadOnly) {
+      result = result.filter((a) => (mentionCounts[a.id] || 0) > 0);
+    }
+    return result;
+  }, [agents, statusFilter, unreadOnly, mentionCounts]);
 
   const getStatusBadge = (status: AgentStatus) => {
     const styles = {
@@ -80,6 +93,12 @@ export default function AgentsPage() {
               <option value="working">Working</option>
               <option value="offline">Offline</option>
             </select>
+            <button
+              onClick={() => setUnreadOnly((v) => !v)}
+              className={`px-3 py-1.5 border rounded text-sm ${unreadOnly ? 'border-mc-accent bg-mc-accent/20 text-mc-text' : 'border-mc-border text-mc-text-secondary'}`}
+            >
+              @{unreadOnly ? 'Unread only' : 'Unread'}
+            </button>
             <button
               onClick={() => { setRefreshing(true); load(); }}
               className="px-3 py-1.5 border border-mc-border rounded text-sm flex items-center gap-2 hover:bg-mc-bg-tertiary"

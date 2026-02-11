@@ -1,6 +1,7 @@
 'use client';
 
 import { useEffect, useState } from 'react';
+import Link from 'next/link';
 import { LayoutDashboard, RefreshCw } from 'lucide-react';
 import { AppNavSidebar } from '@/components/AppNavSidebar';
 
@@ -155,7 +156,10 @@ export default function DashboardPage() {
                     ))}
                   </div>
                 )}
-                <div className="text-xs text-mc-text-secondary mt-2">Thread mentions pending by agent</div>
+                <div className="text-xs text-mc-text-secondary mt-2 flex items-center justify-between">
+                  <span>Thread mentions pending by agent</span>
+                  <Link href="/agents?unreadOnly=1" className="text-mc-accent hover:underline">Open Agents</Link>
+                </div>
               </div>
 
               <div className={cardClass}>
