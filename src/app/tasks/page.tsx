@@ -92,8 +92,8 @@ export default function TasksPage() {
           {loading ? (
             <p className="text-mc-text-secondary">Loading tasks...</p>
           ) : viewMode === 'kanban' ? (
-            <div className="h-[calc(100vh-160px)] bg-mc-bg-secondary border border-mc-border rounded-lg overflow-x-auto overflow-y-hidden">
-              <div className="min-w-[1100px] h-full">
+            <div className="h-[calc(100vh-160px)] bg-mc-bg-secondary border border-mc-border rounded-lg overflow-x-scroll overflow-y-hidden">
+              <div className="min-w-[1500px] h-full">
                 <MissionQueue workspaceId="default" />
               </div>
             </div>
