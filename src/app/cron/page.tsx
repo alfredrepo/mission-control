@@ -1,7 +1,7 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { Clock3 } from 'lucide-react';
+import { useEffect, useMemo, useState } from 'react';
+import { Clock3, RefreshCw } from 'lucide-react';
 import { AppNavSidebar } from '@/components/AppNavSidebar';
 
 type CronJob = {
@@ -15,28 +15,58 @@ type CronJob = {
 export default function CronPage() {
   const [jobs, setJobs] = useState<CronJob[]>([]);
   const [loading, setLoading] = useState(true);
+  const [enabledFilter, setEnabledFilter] = useState('all');
+  const [refreshing, setRefreshing] = useState(false);
+
+  const load = async () => {
+    try {
+      const res = await fetch('/api/openclaw/cron');
+      if (res.ok) {
+        const data = await res.json();
+        setJobs(Array.isArray(data.jobs) ? data.jobs : []);
+      }
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
+    }
+  };
 
   useEffect(() => {
-    const load = async () => {
-      try {
-        const res = await fetch('/api/openclaw/cron');
-        if (res.ok) {
-          const data = await res.json();
-          setJobs(Array.isArray(data.jobs) ? data.jobs : []);
-        }
-      } finally {
-        setLoading(false);
-      }
-    };
     load();
   }, []);
+
+  const filteredJobs = useMemo(() => {
+    if (enabledFilter === 'all') return jobs;
+    if (enabledFilter === 'enabled') return jobs.filter((j) => !!j.enabled);
+    return jobs.filter((j) => !j.enabled);
+  }, [jobs, enabledFilter]);
 
   return (
     <div className="min-h-screen bg-mc-bg">
       <div className="border-b border-mc-border bg-mc-bg-secondary px-6 py-4">
-        <div className="flex items-center gap-2 text-mc-text">
-          <Clock3 className="w-5 h-5 text-mc-accent" />
-          <h1 className="text-xl font-semibold">Cron Jobs</h1>
+        <div className="flex items-center justify-between gap-3">
+          <div className="flex items-center gap-2 text-mc-text">
+            <Clock3 className="w-5 h-5 text-mc-accent" />
+            <h1 className="text-xl font-semibold">Cron Jobs</h1>
+          </div>
+          <div className="flex items-center gap-2">
+            <select
+              value={enabledFilter}
+              onChange={(e) => setEnabledFilter(e.target.value)}
+              className="px-3 py-1.5 bg-mc-bg border border-mc-border rounded text-sm"
+            >
+              <option value="all">All</option>
+              <option value="enabled">Enabled</option>
+              <option value="disabled">Disabled</option>
+            </select>
+            <button
+              onClick={() => { setRefreshing(true); load(); }}
+              className="px-3 py-1.5 border border-mc-border rounded text-sm flex items-center gap-2 hover:bg-mc-bg-tertiary"
+            >
+              <RefreshCw className={`w-4 h-4 ${refreshing ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
         </div>
       </div>
 
@@ -44,7 +74,7 @@ export default function CronPage() {
         <AppNavSidebar workspaceSlug="default" />
         <main className="flex-1 p-6 space-y-3">
           {loading && <p className="text-mc-text-secondary">Loading cron jobs...</p>}
-          {!loading && jobs.map((job, i) => (
+          {!loading && filteredJobs.map((job, i) => (
             <div key={job.id || i} className="bg-mc-bg-secondary border border-mc-border rounded-lg p-4">
               <div className="flex items-center justify-between">
                 <div className="font-medium">{job.name || job.id || `job-${i + 1}`}</div>
