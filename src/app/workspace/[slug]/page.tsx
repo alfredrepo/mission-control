@@ -5,6 +5,7 @@ import { useParams } from 'next/navigation';
 import Link from 'next/link';
 import { ChevronLeft } from 'lucide-react';
 import { Header } from '@/components/Header';
+import { AppNavSidebar } from '@/components/AppNavSidebar';
 import { AgentsSidebar } from '@/components/AgentsSidebar';
 import { MissionQueue } from '@/components/MissionQueue';
 import { LiveFeed } from '@/components/LiveFeed';
@@ -202,11 +203,17 @@ export default function WorkspacePage() {
       <Header workspace={workspace} />
 
       <div className="flex-1 flex overflow-hidden">
-        {/* Agents Sidebar */}
-        <AgentsSidebar workspaceId={workspace.id} />
+        <AppNavSidebar workspaceSlug={workspace.slug} />
 
-        {/* Main Content Area */}
-        <MissionQueue workspaceId={workspace.id} />
+        <div id="agents" className="contents">
+          {/* Agents Sidebar */}
+          <AgentsSidebar workspaceId={workspace.id} />
+        </div>
+
+        <div id="tasks" className="contents">
+          {/* Main Content Area */}
+          <MissionQueue workspaceId={workspace.id} />
+        </div>
 
         {/* Live Feed */}
         <LiveFeed />

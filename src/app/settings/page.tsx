@@ -9,6 +9,7 @@ import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import { Settings, Save, RotateCcw, Home, FolderOpen, Link as LinkIcon, Clock3, RefreshCw } from 'lucide-react';
 import { getConfig, updateConfig, resetConfig, type MissionControlConfig } from '@/lib/config';
+import { AppNavSidebar } from '@/components/AppNavSidebar';
 
 type CronJob = {
   id?: string;
@@ -128,7 +129,9 @@ export default function SettingsPage() {
       </div>
 
       {/* Content */}
-      <div className="max-w-4xl mx-auto px-6 py-8">
+      <div className="flex">
+        <AppNavSidebar workspaceSlug="default" />
+        <div className="flex-1 max-w-4xl px-6 py-8">
         {/* Success Message */}
         {saveSuccess && (
           <div className="mb-6 p-4 bg-green-500/10 border border-green-500/30 rounded text-green-400">
@@ -234,7 +237,7 @@ export default function SettingsPage() {
         </section>
 
         {/* OpenClaw Cron Jobs */}
-        <section className="mb-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
+        <section id="cron-jobs" className="mb-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
           <div className="flex items-center justify-between mb-4">
             <div className="flex items-center gap-2">
               <Clock3 className="w-5 h-5 text-mc-accent" />
@@ -307,6 +310,7 @@ export default function SettingsPage() {
             Environment variables take precedence over UI settings for server-side operations.
           </p>
         </section>
+        </div>
       </div>
     </div>
   );

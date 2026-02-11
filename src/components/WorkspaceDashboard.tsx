@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import { Plus, ArrowRight, Folder, Users, CheckSquare, Trash2, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
+import { AppNavSidebar } from '@/components/AppNavSidebar';
 import type { WorkspaceStats } from '@/lib/types';
 
 export function WorkspaceDashboard() {
@@ -61,7 +62,9 @@ export function WorkspaceDashboard() {
       </header>
 
       {/* Main Content */}
-      <main className="max-w-7xl mx-auto px-6 py-8">
+      <div className="flex">
+        <AppNavSidebar workspaceSlug="default" />
+        <main className="flex-1 max-w-7xl px-6 py-8">
         <div className="mb-8">
           <h2 className="text-2xl font-bold mb-2">All Workspaces</h2>
           <p className="text-mc-text-secondary">
@@ -106,6 +109,7 @@ export function WorkspaceDashboard() {
           </div>
         )}
       </main>
+      </div>
 
       {/* Create Modal */}
       {showCreateModal && (
