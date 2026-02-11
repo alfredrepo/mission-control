@@ -13,9 +13,9 @@ export function AppNavSidebar({ workspaceSlug = 'default' }: AppNavSidebarProps)
 
   const items = [
     { href: '/', label: 'Dashboard', icon: LayoutDashboard },
-    { href: `/workspace/${workspaceSlug}#tasks`, label: 'Tasks', icon: CheckSquare },
-    { href: `/workspace/${workspaceSlug}#agents`, label: 'Agents', icon: Users },
-    { href: '/settings#cron-jobs', label: 'Cron', icon: Clock3 },
+    { href: '/tasks', label: 'Tasks', icon: CheckSquare },
+    { href: '/agents', label: 'Agents', icon: Users },
+    { href: '/cron', label: 'Cron', icon: Clock3 },
     { href: '/settings', label: 'Settings', icon: Settings },
   ];
 
