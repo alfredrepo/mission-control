@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { LayoutDashboard, CheckSquare, Users, Clock3, Settings } from 'lucide-react';
+import { LayoutDashboard, CheckSquare, Users, Clock3, Settings, Home } from 'lucide-react';
 
 interface AppNavSidebarProps {
   workspaceSlug?: string;
@@ -12,11 +12,12 @@ export function AppNavSidebar({ workspaceSlug = 'default' }: AppNavSidebarProps)
   const pathname = usePathname();
 
   const items = [
-    { href: '/', label: 'Dashboard', icon: LayoutDashboard },
+    { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { href: '/tasks', label: 'Tasks', icon: CheckSquare },
     { href: '/agents', label: 'Agents', icon: Users },
     { href: '/cron', label: 'Cron', icon: Clock3 },
     { href: '/settings', label: 'Settings', icon: Settings },
+    { href: '/', label: 'Workspaces', icon: Home },
   ];
 
   return (
