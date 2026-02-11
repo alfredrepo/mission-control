@@ -7,8 +7,16 @@
 
 import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
-import { Settings, Save, RotateCcw, Home, FolderOpen, Link as LinkIcon } from 'lucide-react';
+import { Settings, Save, RotateCcw, Home, FolderOpen, Link as LinkIcon, Clock3, RefreshCw } from 'lucide-react';
 import { getConfig, updateConfig, resetConfig, type MissionControlConfig } from '@/lib/config';
+
+type CronJob = {
+  id?: string;
+  name?: string;
+  enabled?: boolean;
+  schedule?: { kind?: string; expr?: string; tz?: string; everyMs?: number };
+  state?: { nextRunAtMs?: number; lastRunAtMs?: number; lastStatus?: string };
+};
 
 export default function SettingsPage() {
   const router = useRouter();
@@ -16,9 +24,30 @@ export default function SettingsPage() {
   const [isSaving, setIsSaving] = useState(false);
   const [saveSuccess, setSaveSuccess] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cronJobs, setCronJobs] = useState<CronJob[]>([]);
+  const [cronLoading, setCronLoading] = useState(false);
+  const [cronError, setCronError] = useState<string | null>(null);
+
+  const loadCronJobs = async () => {
+    setCronLoading(true);
+    setCronError(null);
+    try {
+      const res = await fetch('/api/openclaw/cron');
+      if (!res.ok) {
+        throw new Error(`HTTP ${res.status}`);
+      }
+      const data = await res.json();
+      setCronJobs(Array.isArray(data.jobs) ? data.jobs : []);
+    } catch (err) {
+      setCronError(err instanceof Error ? err.message : 'Failed to load cron jobs');
+    } finally {
+      setCronLoading(false);
+    }
+  };
 
   useEffect(() => {
     setConfig(getConfig());
+    loadCronJobs();
   }, []);
 
   const handleSave = async () => {
@@ -201,6 +230,61 @@ export default function SettingsPage() {
                 URL where Mission Control is running. Auto-detected by default. Change for remote access.
               </p>
             </div>
+          </div>
+        </section>
+
+        {/* OpenClaw Cron Jobs */}
+        <section className="mb-8 p-6 bg-mc-bg-secondary border border-mc-border rounded-lg">
+          <div className="flex items-center justify-between mb-4">
+            <div className="flex items-center gap-2">
+              <Clock3 className="w-5 h-5 text-mc-accent" />
+              <h2 className="text-xl font-semibold text-mc-text">OpenClaw Cron Jobs</h2>
+            </div>
+            <button
+              onClick={loadCronJobs}
+              disabled={cronLoading}
+              className="px-3 py-1.5 border border-mc-border rounded hover:bg-mc-bg-tertiary text-mc-text-secondary flex items-center gap-2 disabled:opacity-50"
+            >
+              <RefreshCw className={`w-4 h-4 ${cronLoading ? 'animate-spin' : ''}`} />
+              Refresh
+            </button>
+          </div>
+
+          {cronError && (
+            <div className="mb-3 p-3 bg-red-500/10 border border-red-500/30 rounded text-red-400 text-sm">
+              ✗ {cronError}
+            </div>
+          )}
+
+          <div className="text-sm text-mc-text-secondary mb-3">
+            {cronLoading ? 'Loading cron jobs...' : `${cronJobs.length} cron job(s) found`}
+          </div>
+
+          <div className="space-y-2">
+            {cronJobs.map((job, idx) => {
+              const nextRun = job.state?.nextRunAtMs ? new Date(job.state.nextRunAtMs).toISOString() : 'n/a';
+              const scheduleText = job.schedule?.kind === 'cron'
+                ? `${job.schedule.expr || 'n/a'} (${job.schedule.tz || 'UTC'})`
+                : job.schedule?.kind === 'every'
+                ? `every ${job.schedule.everyMs || 0}ms`
+                : 'one-shot';
+
+              return (
+                <div key={job.id || idx} className="p-3 bg-mc-bg border border-mc-border rounded">
+                  <div className="flex items-center justify-between gap-3">
+                    <div className="font-medium text-mc-text">{job.name || job.id || `cron-${idx + 1}`}</div>
+                    <span className={`text-xs px-2 py-0.5 rounded ${job.enabled ? 'bg-green-500/15 text-green-400' : 'bg-red-500/15 text-red-400'}`}>
+                      {job.enabled ? 'enabled' : 'disabled'}
+                    </span>
+                  </div>
+                  <div className="mt-1 text-xs text-mc-text-secondary">Schedule: {scheduleText}</div>
+                  <div className="mt-1 text-xs text-mc-text-secondary">Next run: {nextRun}</div>
+                </div>
+              );
+            })}
+            {!cronLoading && cronJobs.length === 0 && !cronError && (
+              <div className="text-sm text-mc-text-secondary italic">No cron jobs configured.</div>
+            )}
           </div>
         </section>
 
