@@ -78,7 +78,7 @@ export function MissionQueue({ workspaceId }: MissionQueueProps) {
   };
 
   return (
-    <div className="flex-1 flex flex-col overflow-hidden">
+    <div className="flex-1 flex flex-col overflow-x-auto overflow-y-hidden">
       {/* Header */}
       <div className="p-3 border-b border-mc-border flex items-center justify-between">
         <div className="flex items-center gap-2">
@@ -95,7 +95,7 @@ export function MissionQueue({ workspaceId }: MissionQueueProps) {
       </div>
 
       {/* Kanban Columns */}
-      <div className="flex-1 flex gap-3 p-3 overflow-x-auto">
+      <div className="flex-1 flex gap-3 p-3 overflow-x-auto min-w-max">
         {COLUMNS.map((column) => {
           const columnTasks = getTasksByStatus(column.id);
           return (
