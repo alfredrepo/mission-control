@@ -19,11 +19,21 @@ type StandupResponse = {
   totals: { open: number; done_window: number };
 };
 
+type AgentLite = { id: string; name: string; avatar_emoji: string };
+
+type MentionSummary = {
+  agentId: string;
+  name: string;
+  avatar: string;
+  unread: number;
+};
+
 export default function DashboardPage() {
   const [metrics, setMetrics] = useState<MetricsResponse | null>(null);
   const [standup, setStandup] = useState<StandupResponse | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
+  const [mentions, setMentions] = useState<MentionSummary[]>([]);
 
   const load = async () => {
     try {
@@ -34,6 +44,29 @@ export default function DashboardPage() {
 
       if (metricsRes.ok) setMetrics(await metricsRes.json());
       if (standupRes.ok) setStandup(await standupRes.json());
+
+      const agentsRes = await fetch('/api/agents?workspace_id=default');
+      if (agentsRes.ok) {
+        const agents = (await agentsRes.json()) as AgentLite[];
+        const mentionRows = await Promise.all(
+          agents.map(async (a) => {
+            try {
+              const mres = await fetch(`/api/agents/${a.id}/mentions?unread=true`);
+              if (!mres.ok) return { agentId: a.id, name: a.name, avatar: a.avatar_emoji, unread: 0 };
+              const arr = await mres.json();
+              return {
+                agentId: a.id,
+                name: a.name,
+                avatar: a.avatar_emoji,
+                unread: Array.isArray(arr) ? arr.length : 0,
+              };
+            } catch {
+              return { agentId: a.id, name: a.name, avatar: a.avatar_emoji, unread: 0 };
+            }
+          })
+        );
+        setMentions(mentionRows.filter((m) => m.unread > 0).sort((a, b) => b.unread - a.unread));
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -106,6 +139,23 @@ export default function DashboardPage() {
                 <div className="text-sm text-mc-text-secondary">Avg Review Age</div>
                 <div className="text-3xl font-semibold mt-2">{metrics?.metrics.avg_review_age_hours ?? 0}h</div>
                 <div className="text-xs text-mc-text-secondary mt-2">Mean age of tasks in review</div>
+              </div>
+
+              <div className={cardClass}>
+                <div className="text-sm text-mc-text-secondary">Agent Mentions (unread)</div>
+                {mentions.length === 0 ? (
+                  <div className="text-sm mt-2 text-mc-text-secondary">No unread mentions</div>
+                ) : (
+                  <div className="mt-2 space-y-1">
+                    {mentions.slice(0, 6).map((m) => (
+                      <div key={m.agentId} className="text-sm flex items-center justify-between">
+                        <span>{m.avatar} {m.name}</span>
+                        <span className="text-mc-accent">@{m.unread}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+                <div className="text-xs text-mc-text-secondary mt-2">Thread mentions pending by agent</div>
               </div>
 
               <div className={cardClass}>
