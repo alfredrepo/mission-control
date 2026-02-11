@@ -1,20 +1,28 @@
 'use client';
 
 import { useEffect, useMemo, useState } from 'react';
-import { CheckSquare, RefreshCw, Send, Route } from 'lucide-react';
+import { CheckSquare, RefreshCw, Send, Route, LayoutGrid, List } from 'lucide-react';
 import { AppNavSidebar } from '@/components/AppNavSidebar';
+import { MissionQueue } from '@/components/MissionQueue';
+import { useMissionControl } from '@/lib/store';
 import type { Task } from '@/lib/types';
 
 export default function TasksPage() {
-  const [tasks, setTasks] = useState<Task[]>([]);
+  const { setTasks } = useMissionControl();
+  const [tasks, setLocalTasks] = useState<Task[]>([]);
   const [loading, setLoading] = useState(true);
   const [statusFilter, setStatusFilter] = useState('all');
   const [refreshing, setRefreshing] = useState(false);
+  const [viewMode, setViewMode] = useState<'kanban' | 'list'>('kanban');
 
   const load = async () => {
     try {
       const res = await fetch('/api/tasks?workspace_id=default');
-      if (res.ok) setTasks(await res.json());
+      if (res.ok) {
+        const data = await res.json();
+        setLocalTasks(data);
+        setTasks(data);
+      }
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -55,18 +63,18 @@ export default function TasksPage() {
             <h1 className="text-xl font-semibold">Tasks</h1>
           </div>
           <div className="flex items-center gap-2">
-            <select
-              value={statusFilter}
-              onChange={(e) => setStatusFilter(e.target.value)}
-              className="px-3 py-1.5 bg-mc-bg border border-mc-border rounded text-sm"
+            <button
+              onClick={() => setViewMode('kanban')}
+              className={`px-3 py-1.5 border rounded text-sm flex items-center gap-2 ${viewMode === 'kanban' ? 'bg-mc-accent/20 border-mc-accent' : 'border-mc-border'}`}
             >
-              <option value="all">All statuses</option>
-              <option value="inbox">Inbox</option>
-              <option value="assigned">Assigned</option>
-              <option value="in_progress">In Progress</option>
-              <option value="review">Review</option>
-              <option value="done">Done</option>
-            </select>
+              <LayoutGrid className="w-4 h-4" /> Kanban
+            </button>
+            <button
+              onClick={() => setViewMode('list')}
+              className={`px-3 py-1.5 border rounded text-sm flex items-center gap-2 ${viewMode === 'list' ? 'bg-mc-accent/20 border-mc-accent' : 'border-mc-border'}`}
+            >
+              <List className="w-4 h-4" /> List
+            </button>
             <button
               onClick={() => { setRefreshing(true); load(); }}
               className="px-3 py-1.5 border border-mc-border rounded text-sm flex items-center gap-2 hover:bg-mc-bg-tertiary"
@@ -83,53 +91,73 @@ export default function TasksPage() {
         <main className="flex-1 p-6">
           {loading ? (
             <p className="text-mc-text-secondary">Loading tasks...</p>
-          ) : (
-            <div className="bg-mc-bg-secondary border border-mc-border rounded-lg overflow-hidden">
-              <table className="w-full text-sm">
-                <thead className="bg-mc-bg-tertiary text-mc-text-secondary">
-                  <tr>
-                    <th className="text-left px-4 py-2">Title</th>
-                    <th className="text-left px-4 py-2">Status</th>
-                    <th className="text-left px-4 py-2">Priority</th>
-                    <th className="text-left px-4 py-2">Due</th>
-                    <th className="text-left px-4 py-2">Actions</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filteredTasks.map((t) => (
-                    <tr key={t.id} className="border-t border-mc-border">
-                      <td className="px-4 py-2">{t.title}</td>
-                      <td className="px-4 py-2">{t.status}</td>
-                      <td className="px-4 py-2">{t.priority}</td>
-                      <td className="px-4 py-2">{t.due_date || '—'}</td>
-                      <td className="px-4 py-2">
-                        <div className="flex items-center gap-2">
-                          <button
-                            onClick={() => quickAutoRoute(t)}
-                            className="px-2 py-1 text-xs border border-mc-border rounded hover:bg-mc-bg-tertiary flex items-center gap-1"
-                            title="Auto-route + dispatch"
-                          >
-                            <Route className="w-3 h-3" /> Route
-                          </button>
-                          <button
-                            onClick={() => quickDispatch(t)}
-                            className="px-2 py-1 text-xs border border-mc-border rounded hover:bg-mc-bg-tertiary flex items-center gap-1"
-                            title="Dispatch"
-                          >
-                            <Send className="w-3 h-3" /> Dispatch
-                          </button>
-                        </div>
-                      </td>
-                    </tr>
-                  ))}
-                  {filteredTasks.length === 0 && (
-                    <tr>
-                      <td colSpan={5} className="px-4 py-8 text-center text-mc-text-secondary">No tasks found.</td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+          ) : viewMode === 'kanban' ? (
+            <div className="h-[calc(100vh-160px)] bg-mc-bg-secondary border border-mc-border rounded-lg overflow-hidden">
+              <MissionQueue workspaceId="default" />
             </div>
+          ) : (
+            <>
+              <div className="mb-3">
+                <select
+                  value={statusFilter}
+                  onChange={(e) => setStatusFilter(e.target.value)}
+                  className="px-3 py-1.5 bg-mc-bg border border-mc-border rounded text-sm"
+                >
+                  <option value="all">All statuses</option>
+                  <option value="inbox">Inbox</option>
+                  <option value="assigned">Assigned</option>
+                  <option value="in_progress">In Progress</option>
+                  <option value="review">Review</option>
+                  <option value="done">Done</option>
+                </select>
+              </div>
+              <div className="bg-mc-bg-secondary border border-mc-border rounded-lg overflow-hidden">
+                <table className="w-full text-sm">
+                  <thead className="bg-mc-bg-tertiary text-mc-text-secondary">
+                    <tr>
+                      <th className="text-left px-4 py-2">Title</th>
+                      <th className="text-left px-4 py-2">Status</th>
+                      <th className="text-left px-4 py-2">Priority</th>
+                      <th className="text-left px-4 py-2">Due</th>
+                      <th className="text-left px-4 py-2">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {filteredTasks.map((t) => (
+                      <tr key={t.id} className="border-t border-mc-border">
+                        <td className="px-4 py-2">{t.title}</td>
+                        <td className="px-4 py-2">{t.status}</td>
+                        <td className="px-4 py-2">{t.priority}</td>
+                        <td className="px-4 py-2">{t.due_date || '—'}</td>
+                        <td className="px-4 py-2">
+                          <div className="flex items-center gap-2">
+                            <button
+                              onClick={() => quickAutoRoute(t)}
+                              className="px-2 py-1 text-xs border border-mc-border rounded hover:bg-mc-bg-tertiary flex items-center gap-1"
+                              title="Auto-route + dispatch"
+                            >
+                              <Route className="w-3 h-3" /> Route
+                            </button>
+                            <button
+                              onClick={() => quickDispatch(t)}
+                              className="px-2 py-1 text-xs border border-mc-border rounded hover:bg-mc-bg-tertiary flex items-center gap-1"
+                              title="Dispatch"
+                            >
+                              <Send className="w-3 h-3" /> Dispatch
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    ))}
+                    {filteredTasks.length === 0 && (
+                      <tr>
+                        <td colSpan={5} className="px-4 py-8 text-center text-mc-text-secondary">No tasks found.</td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </>
           )}
         </main>
       </div>
