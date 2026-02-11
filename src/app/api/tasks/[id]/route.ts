@@ -85,8 +85,9 @@ export async function PATCH(
       values.push(body.due_date);
     }
 
-    // Track if we need to dispatch task
+    // Track orchestration actions
     let shouldDispatch = false;
+    let shouldAutoRoute = false;
 
     // Handle status change
     if (body.status !== undefined && body.status !== existing.status) {
@@ -96,6 +97,11 @@ export async function PATCH(
       // Auto-dispatch when moving to assigned
       if (body.status === 'assigned' && existing.assigned_agent_id) {
         shouldDispatch = true;
+      }
+
+      // Auto-route when entering assigned/inbox without assignee
+      if ((body.status === 'assigned' || body.status === 'inbox') && !existing.assigned_agent_id && body.assigned_agent_id === undefined) {
+        shouldAutoRoute = true;
       }
 
       // Log status change event
@@ -158,6 +164,12 @@ export async function PATCH(
             shouldDispatch = true;
           }
         }
+      } else {
+        // If task is in a routable state and gets unassigned, auto-route it again
+        const nextStatus = body.status || existing.status;
+        if (nextStatus === 'assigned' || nextStatus === 'inbox') {
+          shouldAutoRoute = true;
+        }
       }
     }
 
@@ -193,10 +205,22 @@ export async function PATCH(
       });
     }
 
+    const missionControlUrl = getMissionControlUrl();
+
+    // Trigger auto-routing if needed (task in inbox/assigned and unassigned)
+    if (shouldAutoRoute && task && !task.assigned_agent_id && (task.status === 'inbox' || task.status === 'assigned')) {
+      fetch(`${missionControlUrl}/api/tasks/${id}/auto-route`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apply: true, dispatch: true }),
+      }).catch(err => {
+        console.error('Auto-route failed:', err);
+      });
+    }
+
     // Trigger auto-dispatch if needed
     if (shouldDispatch) {
       // Call dispatch endpoint asynchronously (don't wait for response)
-      const missionControlUrl = getMissionControlUrl();
       fetch(`${missionControlUrl}/api/tasks/${id}/dispatch`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' }

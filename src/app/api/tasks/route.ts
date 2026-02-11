@@ -3,6 +3,7 @@ import { v4 as uuidv4 } from 'uuid';
 import { queryAll, queryOne, run } from '@/lib/db';
 import { broadcast } from '@/lib/events';
 import type { Task, CreateTaskRequest, Agent } from '@/lib/types';
+import { getMissionControlUrl } from '@/lib/config';
 
 // GET /api/tasks - List all tasks with optional filters
 export async function GET(request: NextRequest) {
@@ -143,6 +144,18 @@ export async function POST(request: NextRequest) {
       broadcast({
         type: 'task_created',
         payload: task,
+      });
+    }
+
+    // Auto-route new unassigned tasks in inbox/assigned
+    if (task && !task.assigned_agent_id && (task.status === 'inbox' || task.status === 'assigned')) {
+      const missionControlUrl = getMissionControlUrl();
+      fetch(`${missionControlUrl}/api/tasks/${task.id}/auto-route`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ apply: true, dispatch: true }),
+      }).catch((err) => {
+        console.error('Auto-route on task create failed:', err);
       });
     }
     
