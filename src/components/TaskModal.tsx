@@ -1,6 +1,21 @@
 'use client';
 
 import { useState } from 'react';
+
+function toDateTimeLocalValue(value?: string | null): string {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  const pad = (n: number) => String(n).padStart(2, '0');
+  return `${date.getFullYear()}-${pad(date.getMonth() + 1)}-${pad(date.getDate())}T${pad(date.getHours())}:${pad(date.getMinutes())}`;
+}
+
+function fromDateTimeLocalValue(value?: string | null): string | null {
+  if (!value) return null;
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return null;
+  return date.toISOString();
+}
 import { X, Save, Trash2, Activity, Package, Bot, ClipboardList, Plus } from 'lucide-react';
 import { useMissionControl } from '@/lib/store';
 import { ActivityLog } from './ActivityLog';
@@ -32,7 +47,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
     priority: task?.priority || 'normal' as TaskPriority,
     status: task?.status || 'inbox' as TaskStatus,
     assigned_agent_id: task?.assigned_agent_id || '',
-    due_date: task?.due_date || '',
+    due_date: toDateTimeLocalValue(task?.due_date),
   });
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -48,7 +63,7 @@ export function TaskModal({ task, onClose, workspaceId }: TaskModalProps) {
         // If planning mode is enabled for new tasks, override status to 'planning'
         status: (!task && usePlanningMode) ? 'planning' : form.status,
         assigned_agent_id: form.assigned_agent_id || null,
-        due_date: form.due_date || null,
+        due_date: fromDateTimeLocalValue(form.due_date),
         workspace_id: workspaceId || task?.workspace_id || 'default',
       };
 
