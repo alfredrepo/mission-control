@@ -92,8 +92,10 @@ export default function TasksPage() {
           {loading ? (
             <p className="text-mc-text-secondary">Loading tasks...</p>
           ) : viewMode === 'kanban' ? (
-            <div className="h-[calc(100vh-160px)] bg-mc-bg-secondary border border-mc-border rounded-lg overflow-hidden">
-              <MissionQueue workspaceId="default" />
+            <div className="h-[calc(100vh-160px)] bg-mc-bg-secondary border border-mc-border rounded-lg overflow-x-auto overflow-y-hidden">
+              <div className="min-w-[1100px] h-full">
+                <MissionQueue workspaceId="default" />
+              </div>
             </div>
           ) : (
             <>
@@ -111,8 +113,8 @@ export default function TasksPage() {
                   <option value="done">Done</option>
                 </select>
               </div>
-              <div className="bg-mc-bg-secondary border border-mc-border rounded-lg overflow-hidden">
-                <table className="w-full text-sm">
+              <div className="bg-mc-bg-secondary border border-mc-border rounded-lg overflow-x-auto">
+                <table className="w-full min-w-[900px] text-sm">
                   <thead className="bg-mc-bg-tertiary text-mc-text-secondary">
                     <tr>
                       <th className="text-left px-4 py-2">Title</th>
